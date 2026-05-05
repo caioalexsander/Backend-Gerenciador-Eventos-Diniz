@@ -1,15 +1,58 @@
 const express = require('express');
 const cors = require('cors');
+const { createClient } = require('@supabase/supabase-js');
 const PDFDocument = require('pdfkit');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.post('/gerar-pdf', (req, res) => {
-  console.log('REQUISIÇÃO RECEBIDA');
+// ====================== CONFIGURAÇÃO SUPABASE ======================
+const supabase = createClient(
+  'https://hrccgivelzkkxtutbgho.supabase.co',
+  'SUA_SERVICE_ROLE_KEY_AQUI'   // ← Cole aqui a Service Role Key
+);
+
+app.post('/gerar-pdf', async (req, res) => {
+  console.log('✅ REQUISIÇÃO RECEBIDA');
 
   const dados = req.body;
+
+  try {
+    const doc = new PDFDocument({ margin: 50 });
+
+    let buffers = [];
+    doc.on('data', buffers.push.bind(buffers));
+    doc.on('end', async () => {
+      const pdfBuffer = Buffer.concat(buffers);
+      const fileName = `contrato-${Date.now()}.pdf`;
+      
+// ====================== SALVAR NO SUPABASE STORAGE ======================
+      const { error: uploadError } = await supabase.storage
+        .from('contratos')
+        .upload(fileName, pdfBuffer, {
+          contentType: 'application/pdf',
+          upsert: true
+        });
+
+      if (uploadError) {
+        console.error('Erro ao subir PDF:', uploadError);
+        return res.status(500).json({ error: 'Erro ao salvar PDF no Storage' });
+      }
+
+      // Pegar URL pública
+      const { data: urlData } = supabase.storage
+        .from('contratos')
+        .getPublicUrl(fileName);
+
+      console.log('✅ PDF salvo com sucesso:', urlData.publicUrl);
+
+      res.json({
+        success: true,
+        pdfUrl: urlData.publicUrl,
+        message: 'PDF gerado e salvo no Supabase!'
+      });
+    });
 
   try {
     const doc = new PDFDocument();
@@ -27,7 +70,7 @@ app.post('/gerar-pdf', (req, res) => {
     );
 
     doc.opacity(0.2); // transparência (0.1 = bem suave)
-    
+
     doc.image('logo2.png',
         pageWidth / 2 - 75, // centraliza horizontal
         pageHeight / 2 - 430, // centraliza vertical
