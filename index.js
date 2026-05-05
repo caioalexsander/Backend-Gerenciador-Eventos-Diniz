@@ -26,7 +26,7 @@ app.post('/gerar-pdf', async (req, res) => {
 
     doc.on('end', async () => {
       const pdfBuffer = Buffer.concat(buffers);
-      const fileName = `contrato-${Date.now()}.pdf`;
+      const fileName = `contrato-${(dados.nome_contratante || 'cliente').replace(/[^a-zA-Z0-9]/g, '')}-${Date.now()}.pdf`;
 
       // Salvar no Supabase Storage
       /*const { error: uploadError } = await supabase.storage
@@ -54,6 +54,12 @@ app.post('/gerar-pdf', async (req, res) => {
 
       console.log('✅ PDF salvo:', urlData.publicUrl);
 
+      // Salvar a URL do PDF no banco
+      await supabase
+        .from('contratos')
+        .update({ pdf_url: urlData.publicUrl })
+        .eq('id', dados.id);   // Vamos passar o id do contrato
+      
       res.json({
         success: true,
         pdfUrl: urlData.publicUrl,
