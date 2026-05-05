@@ -10,7 +10,7 @@ app.use(express.json());
 // ====================== SUPABASE ======================
 const supabase = createClient(
   'https://hrccgivelzkkxtutbgho.supabase.co',
-  'SUA_SERVICE_ROLE_KEY_AQUI'   // ← Cole aqui a Service Role Key
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyY2NnaXZlbHpra3h0dXRiZ2hvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzgzMjc2MiwiZXhwIjoyMDkzNDA4NzYyfQ.Nfo9DLhYRTCahQOCeYRMyDzRlhU3g1HBb-W2XyrJbZs'   // ← Cole aqui a Service Role Key
 );
 
 app.post('/gerar-pdf', async (req, res) => {
@@ -29,6 +29,13 @@ app.post('/gerar-pdf', async (req, res) => {
       const fileName = `contrato-${Date.now()}.pdf`;
 
       // Salvar no Supabase Storage
+      /*const { error: uploadError } = await supabase.storage
+        .from('contratos')
+        .upload(fileName, pdfBuffer, {
+          contentType: 'application/pdf',
+          upsert: true
+        });*/
+
       const { error: uploadError } = await supabase.storage
         .from('contratos')
         .upload(fileName, pdfBuffer, {
@@ -72,15 +79,6 @@ app.post('/gerar-pdf', async (req, res) => {
     doc.on('pageAdded', () => adicionarMarcaDagua(doc));
 
 // ====================== SEU CONTEÚDO DO CONTRATO ======================
-    let buffers = [];
-    doc.on('data', buffers.push.bind(buffers));
-
-    doc.on('end', () => {
-      const pdfBase64 = Buffer.concat(buffers).toString('base64');
-      res.json({ pdf: pdfBase64 });
-    });
-
-    doc.page.margins = { top: 50, bottom: 50, left: 50, right: 50 };
 
 doc.fontSize(16).text('CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE BUFFET', { align: 'center' });
 
