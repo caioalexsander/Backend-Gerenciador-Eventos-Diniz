@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ====================== CONFIGURAÇÃO SUPABASE ======================
+// ====================== SUPABASE ======================
 const supabase = createClient(
   'https://hrccgivelzkkxtutbgho.supabase.co',
   'SUA_SERVICE_ROLE_KEY_AQUI'   // ← Cole aqui a Service Role Key
@@ -23,11 +23,12 @@ app.post('/gerar-pdf', async (req, res) => {
 
     let buffers = [];
     doc.on('data', buffers.push.bind(buffers));
+
     doc.on('end', async () => {
       const pdfBuffer = Buffer.concat(buffers);
       const fileName = `contrato-${Date.now()}.pdf`;
-      
-// ====================== SALVAR NO SUPABASE STORAGE ======================
+
+      // Salvar no Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('contratos')
         .upload(fileName, pdfBuffer, {
@@ -36,65 +37,41 @@ app.post('/gerar-pdf', async (req, res) => {
         });
 
       if (uploadError) {
-        console.error('Erro ao subir PDF:', uploadError);
-        return res.status(500).json({ error: 'Erro ao salvar PDF no Storage' });
+        console.error('Erro upload:', uploadError);
+        return res.status(500).json({ error: 'Erro ao salvar PDF' });
       }
 
-      // Pegar URL pública
       const { data: urlData } = supabase.storage
         .from('contratos')
         .getPublicUrl(fileName);
 
-      console.log('✅ PDF salvo com sucesso:', urlData.publicUrl);
+      console.log('✅ PDF salvo:', urlData.publicUrl);
 
       res.json({
         success: true,
         pdfUrl: urlData.publicUrl,
-        message: 'PDF gerado e salvo no Supabase!'
+        message: 'PDF gerado e salvo com sucesso!'
       });
     });
 
-  try {
-    const doc = new PDFDocument();
-
+  // ====================== MARCA D'ÁGUA ======================
     function adicionarMarcaDagua(doc) {
-    const pageWidth = doc.page.width;
-    const pageHeight = doc.page.height;
+      const pageWidth = doc.page.width;
+      const pageHeight = doc.page.height;
 
-    doc.opacity(0.1); // transparência (0.1 = bem suave)
-
-    doc.image('logo.png',
-        pageWidth / 2 - 250, // centraliza horizontal
-        50, // centraliza vertical
-        { width: 500 }
-    );
-
-    doc.opacity(0.2); // transparência (0.1 = bem suave)
-
-    doc.image('logo2.png',
-        pageWidth / 2 - 75, // centraliza horizontal
-        pageHeight / 2 - 430, // centraliza vertical
-        { width: 150 }
-    );
-
-    doc.image('logo3.png',
-        pageWidth / 2 - 75, // centraliza horizontal
-        pageHeight - 120,
-        { width: 150 }
-    );
-
-    doc.opacity(1); // volta ao normal
-    
+      doc.opacity(0.1);
+      doc.image('logo.png', pageWidth / 2 - 250, 50, { width: 500 });
+      doc.opacity(0.2);
+      doc.image('logo2.png', pageWidth / 2 - 75, pageHeight / 2 - 430, { width: 150 });
+      doc.image('logo3.png', pageWidth / 2 - 75, pageHeight - 120, { width: 150 });
+      doc.opacity(1);
     }
 
-    // primeira página
     adicionarMarcaDagua(doc);
 
-    // próximas páginas
-    doc.on('pageAdded', () => {
-    adicionarMarcaDagua(doc);
-    });
+    doc.on('pageAdded', () => adicionarMarcaDagua(doc));
 
+// ====================== SEU CONTEÚDO DO CONTRATO ======================
     let buffers = [];
     doc.on('data', buffers.push.bind(buffers));
 
@@ -105,11 +82,7 @@ app.post('/gerar-pdf', async (req, res) => {
 
     doc.page.margins = { top: 50, bottom: 50, left: 50, right: 50 };
 
-doc
-  .fontSize(16)
-  .text('CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE BUFFET', {
-    align: 'center'
-  });
+doc.fontSize(16).text('CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE BUFFET', { align: 'center' });
 
 doc.moveDown();
 
