@@ -28,14 +28,7 @@ app.post('/gerar-pdf', async (req, res) => {
       const pdfBuffer = Buffer.concat(buffers);
       const fileName = `contrato-${(dados.nome_contratante || 'cliente').replace(/[^a-zA-Z0-9]/g, '')}-${Date.now()}.pdf`;
 
-      // Salvar no Supabase Storage
-      /*const { error: uploadError } = await supabase.storage
-        .from('contratos')
-        .upload(fileName, pdfBuffer, {
-          contentType: 'application/pdf',
-          upsert: true
-        });*/
-
+      // Upload para o Storage
       const { error: uploadError } = await supabase.storage
         .from('contratos')
         .upload(fileName, pdfBuffer, {
@@ -52,18 +45,20 @@ app.post('/gerar-pdf', async (req, res) => {
         .from('contratos')
         .getPublicUrl(fileName);
 
-      console.log('✅ PDF salvo:', urlData.publicUrl);
+      console.log('✅ PDF URL:', urlData.publicUrl);
 
-      // Salvar a URL do PDF no banco
-      await supabase
-        .from('contratos')
-        .update({ pdf_url: urlData.publicUrl })
-        .eq('id', dados.id);   // Vamos passar o id do contrato
-      
+      // ==================== SALVAR URL NO BANCO ====================
+      if (dados.id) {
+        await supabase
+          .from('contratos')
+          .update({ pdf_url: urlData.publicUrl })
+          .eq('id', dados.id);
+      }
+
       res.json({
         success: true,
         pdfUrl: urlData.publicUrl,
-        message: 'PDF gerado e salvo com sucesso!'
+        message: 'PDF gerado com sucesso!'
       });
     });
 
@@ -245,7 +240,6 @@ doc.moveDown();
 
 doc.font('Helvetica').text(
   `${dados.clausula_texto }`,
-  { continued: true }
 );
 
 doc.moveDown();
