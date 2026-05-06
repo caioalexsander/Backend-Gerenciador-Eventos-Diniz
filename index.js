@@ -163,7 +163,7 @@ doc.font('Helvetica-Bold').text(
 );
 
 doc.font('Helvetica').text(
-  'ate ',
+  ' ate ',
   { continued: true }
 );
 
@@ -197,7 +197,6 @@ doc.font('Helvetica').text(
   '1.2  Compreendem a execução do serviço o fornecimento de alimentação, constante de cardápio pré programado entre as partes, foi definido antecipadamente, constando de :',
   { 
     indent: 20,
-    continued: true 
   }
 );
 
@@ -245,15 +244,34 @@ doc.text(`
 doc.moveDown();
 
 doc.font('Helvetica').text(
-  '6. ',
+  `${dados.clausula_texto }`,
   { continued: true }
 );
 
 doc.moveDown();
 
 doc.font('Helvetica').text(
-  '7. ',
+  '7. Evento contrato para ',
   { continued: true }
+);
+
+doc.font('Helvetica-Bold').text(
+  `${dados.num_convidados }`,
+  { continued: true }
+);
+
+doc.font('Helvetica').text(
+  'pessoas ficando a contratante ciente que o buffet cobra ',
+  { continued: true }
+);
+
+doc.font('Helvetica-Bold').text(
+  `${dados.preco_por_convidado }`,
+  { continued: true }
+);
+
+doc.font('Helvetica').text(
+  `Reais por convidado excedente crianças pagam a partir de 6 anos. Fica uma recepção para contagem convidados do buffet. .`
 );
 
 doc.moveDown();
