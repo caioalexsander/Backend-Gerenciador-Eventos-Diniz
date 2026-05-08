@@ -92,6 +92,19 @@ app.post('/gerar-pdf', async (req, res) => {
       });
     });
 
+    // ====================== Assinatura ======================
+    function adicionarAssinatura(doc) {
+      if (dados.assinatura !== 'Digital') return;
+
+      const pageWidth = doc.page.width;
+      const pageHeight = doc.page.height;
+
+      // 📍 Assinatura pequena no canto
+      doc.image('assinatura.png', pageWidth - 100, pageHeight - 80, {
+        width: 60
+      });
+    }
+
     // ====================== MARCA D'ÁGUA ======================
     function adicionarMarcaDagua(doc) {
       const pageWidth = doc.page.width;
@@ -106,9 +119,13 @@ app.post('/gerar-pdf', async (req, res) => {
     }
 
     adicionarMarcaDagua(doc);
-
-    doc.on('pageAdded', () => adicionarMarcaDagua(doc));
+    adicionarAssinatura(doc);
     
+    doc.on('pageAdded', () => {
+      adicionarMarcaDagua(doc);
+      adicionarAssinatura(doc); // assinatura pequena nas páginas extras
+    });
+
     // Gerar o PDF com o texto do Supabase
     doc.fontSize(16).text('CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE BUFFET', { align: 'center' });
     doc.moveDown(2);
@@ -117,8 +134,21 @@ app.post('/gerar-pdf', async (req, res) => {
 
     // Assinatura
     doc.moveDown(7);
-    doc.text('________________________                             ________________________', { align: 'justify' });
-    doc.text('          CONTRATADA                                                      CONTRATANTE      ', { align: 'justify' });
+
+      // 📍 Pega posição atual
+      const yAssinatura = doc.y;
+
+      // 🔥 Assinatura digital (se for o caso)
+      if (dados.assinatura === 'Digital') {
+        doc.image('assinatura.png', 80, yAssinatura - 60, {
+          width: 120
+        });
+      }
+
+      // Linha de assinatura
+      doc.text('_______________________                             _____________________', { align: 'justify' });
+
+      doc.text('       CONTRATADA                                                   CONTRATANTE      ', { align: 'justify' });
 
     doc.end();
 
