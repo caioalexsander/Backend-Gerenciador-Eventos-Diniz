@@ -3,7 +3,15 @@ const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const PDFDocument = require('pdfkit');
 const path = require('path');
-const app = express();
+app.use(express.json({ limit: '50mb' }));
+app.use(cors());
+require('dotenv').config();
+
+// ====================== SUPABASE ======================
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
 process.on('uncaughtException', (err) => {
   console.error('❌ UNCAUGHT EXCEPTION');
@@ -14,15 +22,6 @@ process.on('unhandledRejection', (err) => {
   console.error('❌ UNHANDLED REJECTION');
   console.error(err);
 });
-
-app.use(cors());
-app.use(express.json());
-
-// ====================== SUPABASE ======================
-const supabase = createClient(
-  'https://hrccgivelzkkxtutbgho.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyY2NnaXZlbHpra3h0dXRiZ2hvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzgzMjc2MiwiZXhwIjoyMDkzNDA4NzYyfQ.Nfo9DLhYRTCahQOCeYRMyDzRlhU3g1HBb-W2XyrJbZs'   // ← Cole aqui a Service Role Key
-);
 
 app.get('/teste', (req, res) => {
   console.log('🔥 TESTE FUNCIONOU');
@@ -152,10 +151,7 @@ app.post('/gerar-pdf', async (req, res) => {
 
       // 🔥 Assinatura digital (se for o caso)
       if (dados.assinatura === 'Digital') {
-        doc.image('assinatura.png', 80, yAssinatura - 60, {
-          width: 120
-        });
-      }
+        doc.image(path.join(__dirname, 'assinatura.png'), 80, yAssinatura - 60, {width: 120});}
 
       // Linha de assinatura
       doc.text('_______________________                             _____________________', { align: 'justify' });
@@ -165,8 +161,17 @@ app.post('/gerar-pdf', async (req, res) => {
     doc.end();
 
   } catch (err) {
+
+    console.error('❌ ERRO GERAL');
     console.error(err);
-    res.status(500).json({ error: 'Erro interno ao gerar PDF' });
+
+    if (err.stack) {
+      console.error(err.stack);
+    }
+
+    res.status(500).json({
+      error: err.message || 'Erro interno ao gerar PDF'
+    });
   }
 });
 
@@ -174,12 +179,4 @@ const PORT = process.env.PORT || 3001;
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Backend rodando na porta ${PORT}`);
-});
-
-process.on('uncaughtException', (err) => {
-  console.error('UNCAUGHT EXCEPTION:', err);
-});
-
-process.on('unhandledRejection', (err) => {
-  console.error('UNHANDLED REJECTION:', err);
 });
