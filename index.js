@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const PDFDocument = require('pdfkit');
-
+const path = require('path');
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -100,9 +100,7 @@ app.post('/gerar-pdf', async (req, res) => {
       const pageHeight = doc.page.height;
 
       // 📍 Assinatura pequena no canto
-      doc.image('assinatura.png', pageWidth - 100, pageHeight - 80, {
-        width: 60
-      });
+      doc.image(path.join(__dirname, 'assinatura.png'), pageWidth - 100, pageHeight - 80, {width: 60});
     }
 
     // ====================== MARCA D'ÁGUA ======================
@@ -110,10 +108,10 @@ app.post('/gerar-pdf', async (req, res) => {
       const pageWidth = doc.page.width;
       const pageHeight = doc.page.height;
 
-      doc.image('logo.png', pageWidth / 2 - 250, 50, { width: 500 });
+      doc.image(path.join(__dirname, 'logo.png'), pageWidth / 2 - 250, 50, { width: 500 });
       doc.opacity(0.2);
-      doc.image('logo2.png', pageWidth / 2 - 75, pageHeight / 2 - 430, { width: 150 });
-      doc.image('logo3.png', pageWidth / 2 - 75, pageHeight - 120, { width: 150 });
+      doc.image(path.join(__dirname, 'logo2.png'), pageWidth / 2 - 75, pageHeight / 2 - 430, { width: 150 });
+      doc.image(path.join(__dirname, 'logo3.png'), pageWidth / 2 - 75, pageHeight - 120, { width: 150 });
     }
 
     adicionarMarcaDagua(doc);
