@@ -3,15 +3,8 @@ const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const PDFDocument = require('pdfkit');
 const path = require('path');
+const app = express();
 app.use(express.json({ limit: '50mb' }));
-app.use(cors());
-require('dotenv').config();
-
-// ====================== SUPABASE ======================
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
 
 process.on('uncaughtException', (err) => {
   console.error('❌ UNCAUGHT EXCEPTION');
@@ -22,6 +15,14 @@ process.on('unhandledRejection', (err) => {
   console.error('❌ UNHANDLED REJECTION');
   console.error(err);
 });
+
+app.use(cors());
+require('dotenv').config();
+// ====================== SUPABASE ======================
+const supabase = createClient(
+  'https://hrccgivelzkkxtutbgho.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyY2NnaXZlbHpra3h0dXRiZ2hvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzgzMjc2MiwiZXhwIjoyMDkzNDA4NzYyfQ.Nfo9DLhYRTCahQOCeYRMyDzRlhU3g1HBb-W2XyrJbZs'   // ← Cole aqui a Service Role Key
+);
 
 app.get('/teste', (req, res) => {
   console.log('🔥 TESTE FUNCIONOU');
