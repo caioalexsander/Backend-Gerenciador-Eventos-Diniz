@@ -13,6 +13,11 @@ const supabase = createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyY2NnaXZlbHpra3h0dXRiZ2hvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzgzMjc2MiwiZXhwIjoyMDkzNDA4NzYyfQ.Nfo9DLhYRTCahQOCeYRMyDzRlhU3g1HBb-W2XyrJbZs'   // ← Cole aqui a Service Role Key
 );
 
+app.get('/teste', (req, res) => {
+  console.log('🔥 TESTE FUNCIONOU');
+  res.send('OK');
+});
+
 app.post('/gerar-pdf', async (req, res) => {
   console.log('✅ REQUISIÇÃO RECEBIDA');
 
