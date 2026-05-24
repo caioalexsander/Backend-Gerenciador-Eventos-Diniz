@@ -4,6 +4,17 @@ const { createClient } = require('@supabase/supabase-js');
 const PDFDocument = require('pdfkit');
 const path = require('path');
 const app = express();
+
+process.on('uncaughtException', (err) => {
+  console.error('❌ UNCAUGHT EXCEPTION');
+  console.error(err);
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error('❌ UNHANDLED REJECTION');
+  console.error(err);
+});
+
 app.use(cors());
 app.use(express.json());
 
