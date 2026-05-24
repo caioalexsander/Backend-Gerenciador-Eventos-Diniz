@@ -69,7 +69,7 @@ app.post('/gerar-pdf', async (req, res) => {
     doc.on('data', buffers.push.bind(buffers));
     doc.on('end', async () => {
       const pdfBuffer = Buffer.concat(buffers);
-      const fileName = `contrato-${(dados.nome_contratante || 'cliente').replace(/[^a-zA-Z0-9]/g, '')}-${Date.now()}.pdf`;
+      const fileName = `contrato-${Date.now()}.pdf`
 
       // Salvar no Storage
       const { error: uploadError } = await supabase.storage
@@ -110,12 +110,10 @@ app.post('/gerar-pdf', async (req, res) => {
       const pageWidth = doc.page.width;
       const pageHeight = doc.page.height;
 
-      doc.opacity(0.1);
       doc.image('logo.png', pageWidth / 2 - 250, 50, { width: 500 });
       doc.opacity(0.2);
       doc.image('logo2.png', pageWidth / 2 - 75, pageHeight / 2 - 430, { width: 150 });
       doc.image('logo3.png', pageWidth / 2 - 75, pageHeight - 120, { width: 150 });
-      doc.opacity(1);
     }
 
     adicionarMarcaDagua(doc);
@@ -158,6 +156,8 @@ app.post('/gerar-pdf', async (req, res) => {
   }
 });
 
-app.listen(3001, '0.0.0.0', () => {
-  console.log('🚀 Backend rodando na porta 3001');
+const PORT = process.env.PORT || 3001;
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Backend rodando na porta ${PORT}`);
 });
