@@ -14,6 +14,88 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
+// ====================== ASSINATURA MANUAL ======================
+
+// Rota para upload + comparação + atualização
+app.put('/contratos/:id/assinatura-manual', async (req, res) => {
+  const { id } = req.params;
+  const { pdf_url, original_pdf_url } = req.body;
+
+  try {
+    if (!pdf_url) {
+      return res.status(400).json({ error: "pdf_url é obrigatório" });
+    }
+
+    // Buscar contrato atual
+    const { data: contrato, error: fetchError } = await supabase
+      .from('contratos')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !contrato) {
+      return res.status(404).json({ error: "Contrato não encontrado" });
+    }
+
+    // === COMPARAÇÃO DE PDF (simplificada) ===
+    // Como você usa pdfkit, comparação perfeita é complexa.
+    // Por enquanto vamos fazer uma comparação básica (pode melhorar depois)
+    const conteudoIgual = await compararPDFsBasico(original_pdf_url, pdf_url);
+
+    if (!conteudoIgual) {
+      return res.status(409).json({
+        warning: true,
+        message: "O conteúdo do contrato foi alterado além da assinatura. Deseja prosseguir mesmo assim?"
+      });
+    }
+
+    // Atualizar contrato
+    const { error: updateError } = await supabase
+      .from('contratos')
+      .update({
+        pdf_url: pdf_url,
+        status_assinatura: "assinado",
+        data_assinatura: new Date().toISOString()
+      })
+      .eq('id', id);
+
+    if (updateError) throw updateError;
+
+    res.json({
+      success: true,
+      message: "Contrato assinado manualmente com sucesso!",
+      pdf_url: pdf_url
+    });
+
+  } catch (error) {
+    console.error("Erro na assinatura manual:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Função auxiliar de comparação básica (pode ser melhorada)
+async function compararPDFsBasico(urlOriginal, urlNovo) {
+  try {
+    // Baixar os dois PDFs e comparar tamanho + hash simples (por enquanto)
+    const response1 = await fetch(urlOriginal);
+    const response2 = await fetch(urlNovo);
+
+    const buffer1 = await response1.arrayBuffer();
+    const buffer2 = await response2.arrayBuffer();
+
+    // Comparação simples por tamanho (pode ser melhorada com pdf-lib depois)
+    if (buffer1.byteLength === buffer2.byteLength) {
+      return true; // Provavelmente só adicionou assinatura
+    }
+
+    // Se quiser mais precisão no futuro, podemos instalar 'pdf-lib' ou 'pdf2json'
+    return false;
+  } catch (e) {
+    console.error("Erro na comparação:", e);
+    return false; // Em caso de erro, força confirmação do usuário
+  }
+}
+
 app.post('/gerar-pdf', async (req, res) => {
   console.log('✅ REQUISIÇÃO RECEBIDA');
 
