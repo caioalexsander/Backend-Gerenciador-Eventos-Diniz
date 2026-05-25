@@ -2,21 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const PDFDocument = require('pdfkit');
-const path = require('path');
+//const path = require('path');
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-
-process.on('uncaughtException', (err) => {
-  console.error('❌ UNCAUGHT EXCEPTION');
-  console.error(err);
-});
-
-process.on('unhandledRejection', (err) => {
-  console.error('❌ UNHANDLED REJECTION');
-  console.error(err);
-});
-
+app.use(express.json());
 
 require('dotenv').config();
 // ====================== SUPABASE ======================
@@ -24,7 +13,6 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 );
-
 
 app.post('/gerar-pdf', async (req, res) => {
   console.log('✅ REQUISIÇÃO RECEBIDA');
@@ -113,7 +101,9 @@ app.post('/gerar-pdf', async (req, res) => {
       const pageHeight = doc.page.height;
 
       // 📍 Assinatura pequena no canto
-      doc.image(path.join(__dirname, 'assinatura.png'), pageWidth - 100, pageHeight - 80, {width: 60});
+      doc.image('assinatura.png', pageWidth - 100, pageHeight - 80, {
+        width: 60
+      });
     }
 
     // ====================== MARCA D'ÁGUA ======================
@@ -121,10 +111,10 @@ app.post('/gerar-pdf', async (req, res) => {
       const pageWidth = doc.page.width;
       const pageHeight = doc.page.height;
 
-      doc.image(path.join(__dirname, 'logo.png'), pageWidth / 2 - 250, 50, { width: 500 });
+      doc.image('logo.png', pageWidth / 2 - 250, 50, { width: 500 });
       doc.opacity(0.2);
-      doc.image(path.join(__dirname, 'logo2.png'), pageWidth / 2 - 75, pageHeight / 2 - 430, { width: 150 });
-      doc.image(path.join(__dirname, 'logo3.png'), pageWidth / 2 - 75, pageHeight - 120, { width: 150 });
+      doc.image('logo2.png', pageWidth / 2 - 75, pageHeight / 2 - 430, { width: 150 });
+      doc.image('logo3.png', pageWidth / 2 - 75, pageHeight - 120, { width: 150 });
     }
 
     adicionarMarcaDagua(doc);
@@ -149,7 +139,10 @@ app.post('/gerar-pdf', async (req, res) => {
 
       // 🔥 Assinatura digital (se for o caso)
       if (dados.assinatura === 'Digital') {
-        doc.image(path.join(__dirname, 'assinatura.png'), 80, yAssinatura - 60, {width: 120});}
+        doc.image('assinatura.png', 80, yAssinatura - 60, {
+          width: 120
+        });
+      }
 
       // Linha de assinatura
       doc.text('_______________________                             _____________________', { align: 'justify' });
@@ -159,17 +152,8 @@ app.post('/gerar-pdf', async (req, res) => {
     doc.end();
 
   } catch (err) {
-
-    console.error('❌ ERRO GERAL');
     console.error(err);
-
-    if (err.stack) {
-      console.error(err.stack);
-    }
-
-    res.status(500).json({
-      error: err.message || 'Erro interno ao gerar PDF'
-    });
+    res.status(500).json({ error: 'Erro interno ao gerar PDF' });
   }
 });
 
