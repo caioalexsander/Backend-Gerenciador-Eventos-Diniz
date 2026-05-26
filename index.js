@@ -17,17 +17,16 @@ const supabase = createClient(
 // ====================== ASSINATURA MANUAL ======================
 app.put('/contratos/:id/assinatura-manual', async (req, res) => {
   const { id } = req.params;
-  const { pdf_url, original_pdf_url } = req.body;
+  const { pdf_url } = req.body;   // Removemos a dependência do original_pdf_url vindo do frontend
 
   try {
     console.log('📄 Assinatura manual - ID:', id);
-    console.log('📄 Original URL:', original_pdf_url || 'VAZIA');
-    console.log('📄 Novo URL:', pdf_url);
+    console.log('📄 Novo URL recebido:', pdf_url);
 
-    // Buscar contrato
+    // Buscar o contrato ATUAL do banco (mais confiável)
     const { data: contrato, error: fetchError } = await supabase
       .from('contratos')
-      .select('*')
+      .select('pdf_url, status_assinatura')
       .eq('id', id)
       .single();
 
@@ -35,7 +34,11 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
       return res.status(404).json({ error: "Contrato não encontrado" });
     }
 
-    // Comparação (se tiver URL original)
+    const original_pdf_url = contrato.pdf_url;   // ← Pegamos direto do DB
+
+    console.log('📄 URL Original do Banco:', original_pdf_url || 'Nenhum');
+
+    // Comparação
     let conteudoIgual = true;
     if (original_pdf_url) {
       conteudoIgual = await compararPDFsBasico(original_pdf_url, pdf_url);
@@ -48,25 +51,18 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
       });
     }
 
-    // Atualizar (sem data_assinatura por enquanto)
+    // Atualizar
     const { error: updateError } = await supabase
       .from('contratos')
       .update({
         pdf_url: pdf_url,
         status_assinatura: "assinado"
-        // data_assinatura: new Date().toISOString()  ← removido temporariamente
       })
       .eq('id', id);
 
-    if (updateError) {
-      console.error("Erro ao atualizar contrato:", updateError);
-      return res.status(400).json({ error: updateError.message });
-    }
+    if (updateError) throw updateError;
 
-    res.json({
-      success: true,
-      message: "Contrato assinado manualmente com sucesso!"
-    });
+    res.json({ success: true, message: "Contrato assinado com sucesso!" });
 
   } catch (error) {
     console.error("Erro na assinatura manual:", error);
