@@ -15,8 +15,6 @@ const supabase = createClient(
 );
 
 // ====================== ASSINATURA MANUAL ======================
-
-// Rota para upload + comparação + atualização
 app.put('/contratos/:id/assinatura-manual', async (req, res) => {
   const { id } = req.params;
   const { pdf_url, original_pdf_url } = req.body;
@@ -26,7 +24,11 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
       return res.status(400).json({ error: "pdf_url é obrigatório" });
     }
 
-    // Buscar contrato atual
+    console.log('📄 Assinatura manual - ID:', id);
+    console.log('📄 Original URL:', original_pdf_url);
+    console.log('📄 Novo URL:', pdf_url);
+
+    // Buscar contrato
     const { data: contrato, error: fetchError } = await supabase
       .from('contratos')
       .select('*')
@@ -37,10 +39,12 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
       return res.status(404).json({ error: "Contrato não encontrado" });
     }
 
-    // === COMPARAÇÃO DE PDF (simplificada) ===
-    // Como você usa pdfkit, comparação perfeita é complexa.
-    // Por enquanto vamos fazer uma comparação básica (pode melhorar depois)
-    const conteudoIgual = await compararPDFsBasico(original_pdf_url, pdf_url);
+    // === COMPARAÇÃO ===
+    let conteudoIgual = true;
+
+    if (original_pdf_url && original_pdf_url !== pdf_url) {
+      conteudoIgual = await compararPDFsBasico(original_pdf_url, pdf_url);
+    }
 
     if (!conteudoIgual) {
       return res.status(409).json({
@@ -49,7 +53,7 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
       });
     }
 
-    // Atualizar contrato
+    // Atualizar no banco
     const { error: updateError } = await supabase
       .from('contratos')
       .update({
@@ -63,8 +67,7 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
 
     res.json({
       success: true,
-      message: "Contrato assinado manualmente com sucesso!",
-      pdf_url: pdf_url
+      message: "Contrato assinado manualmente com sucesso!"
     });
 
   } catch (error) {
@@ -73,26 +76,39 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
   }
 });
 
-// Função auxiliar de comparação básica (pode ser melhorada)
+// Função de comparação corrigida
 async function compararPDFsBasico(urlOriginal, urlNovo) {
   try {
-    // Baixar os dois PDFs e comparar tamanho + hash simples (por enquanto)
+    if (!urlOriginal || !urlNovo) {
+      console.log('⚠️ Uma das URLs está vazia, pulando comparação detalhada');
+      return false; // força warning para o usuário
+    }
+
+    console.log('🔍 Comparando PDFs...');
+    console.log('Original:', urlOriginal);
+    console.log('Novo:', urlNovo);
+
     const response1 = await fetch(urlOriginal);
     const response2 = await fetch(urlNovo);
+
+    if (!response1.ok || !response2.ok) {
+      console.log('⚠️ Falha ao baixar um dos PDFs');
+      return false;
+    }
 
     const buffer1 = await response1.arrayBuffer();
     const buffer2 = await response2.arrayBuffer();
 
-    // Comparação simples por tamanho (pode ser melhorada com pdf-lib depois)
-    if (buffer1.byteLength === buffer2.byteLength) {
-      return true; // Provavelmente só adicionou assinatura
-    }
+    // Comparação simples por tamanho (aceitável por enquanto)
+    const mesmoTamanho = buffer1.byteLength === buffer2.byteLength;
 
-    // Se quiser mais precisão no futuro, podemos instalar 'pdf-lib' ou 'pdf2json'
-    return false;
+    console.log(`📏 Tamanhos: ${buffer1.byteLength} vs ${buffer2.byteLength} → ${mesmoTamanho ? 'IGUAL' : 'DIFERENTE'}`);
+
+    return mesmoTamanho;
+
   } catch (e) {
     console.error("Erro na comparação:", e);
-    return false; // Em caso de erro, força confirmação do usuário
+    return false; // Em caso de erro, mostra warning
   }
 }
 
