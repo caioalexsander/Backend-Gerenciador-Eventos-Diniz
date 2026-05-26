@@ -20,12 +20,8 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
   const { pdf_url, original_pdf_url } = req.body;
 
   try {
-    if (!pdf_url) {
-      return res.status(400).json({ error: "pdf_url é obrigatório" });
-    }
-
     console.log('📄 Assinatura manual - ID:', id);
-    console.log('📄 Original URL:', original_pdf_url);
+    console.log('📄 Original URL:', original_pdf_url || 'VAZIA');
     console.log('📄 Novo URL:', pdf_url);
 
     // Buscar contrato
@@ -39,10 +35,9 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
       return res.status(404).json({ error: "Contrato não encontrado" });
     }
 
-    // === COMPARAÇÃO ===
+    // Comparação (se tiver URL original)
     let conteudoIgual = true;
-
-    if (original_pdf_url && original_pdf_url !== pdf_url) {
+    if (original_pdf_url) {
       conteudoIgual = await compararPDFsBasico(original_pdf_url, pdf_url);
     }
 
@@ -53,17 +48,20 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
       });
     }
 
-    // Atualizar no banco
+    // Atualizar (sem data_assinatura por enquanto)
     const { error: updateError } = await supabase
       .from('contratos')
       .update({
         pdf_url: pdf_url,
-        status_assinatura: "assinado",
-        data_assinatura: new Date().toISOString()
+        status_assinatura: "assinado"
+        // data_assinatura: new Date().toISOString()  ← removido temporariamente
       })
       .eq('id', id);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error("Erro ao atualizar contrato:", updateError);
+      return res.status(400).json({ error: updateError.message });
+    }
 
     res.json({
       success: true,
@@ -76,39 +74,30 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
   }
 });
 
-// Função de comparação corrigida
+// Função de comparação
 async function compararPDFsBasico(urlOriginal, urlNovo) {
   try {
-    if (!urlOriginal || !urlNovo) {
-      console.log('⚠️ Uma das URLs está vazia, pulando comparação detalhada');
-      return false; // força warning para o usuário
-    }
-
     console.log('🔍 Comparando PDFs...');
-    console.log('Original:', urlOriginal);
-    console.log('Novo:', urlNovo);
 
     const response1 = await fetch(urlOriginal);
     const response2 = await fetch(urlNovo);
 
     if (!response1.ok || !response2.ok) {
-      console.log('⚠️ Falha ao baixar um dos PDFs');
+      console.log('⚠️ Falha ao baixar PDFs');
       return false;
     }
 
     const buffer1 = await response1.arrayBuffer();
     const buffer2 = await response2.arrayBuffer();
 
-    // Comparação simples por tamanho (aceitável por enquanto)
     const mesmoTamanho = buffer1.byteLength === buffer2.byteLength;
-
-    console.log(`📏 Tamanhos: ${buffer1.byteLength} vs ${buffer2.byteLength} → ${mesmoTamanho ? 'IGUAL' : 'DIFERENTE'}`);
+    console.log(`📏 Tamanhos: ${buffer1.byteLength} vs ${buffer2.byteLength} → ${mesmoTamanho}`);
 
     return mesmoTamanho;
 
   } catch (e) {
     console.error("Erro na comparação:", e);
-    return false; // Em caso de erro, mostra warning
+    return false;
   }
 }
 
