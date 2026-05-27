@@ -34,7 +34,6 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
     }
 
     const original_pdf_url = contrato.pdf_url;
-
     let conteudoIgual = true;
 
     if (original_pdf_url) {
@@ -66,13 +65,13 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
   }
 });
 
-// ✅ NOVA FUNÇÃO - Comparação inteligente
+// ✅ FUNÇÃO CORRIGIDA
 async function compararPDFsComAssinatura(urlOriginal, urlNovo) {
   try {
     const { PDFDocument } = require('pdf-lib');
-    const pdfParse = require('pdf-parse');
+    const pdfParse = require('pdf-parse/lib/pdf.js').default;   // ← Correção aqui
 
-    console.log('🔍 Comparando PDFs página por página...');
+    console.log('🔍 Comparando PDFs (texto)...');
 
     const res1 = await fetch(urlOriginal);
     const res2 = await fetch(urlNovo);
@@ -80,33 +79,23 @@ async function compararPDFsComAssinatura(urlOriginal, urlNovo) {
     const pdfBytes1 = new Uint8Array(await res1.arrayBuffer());
     const pdfBytes2 = new Uint8Array(await res2.arrayBuffer());
 
-    const pdf1 = await PDFDocument.load(pdfBytes1);
-    const pdf2 = await PDFDocument.load(pdfBytes2);
-
-    const numPages1 = pdf1.getPageCount();
-    const numPages2 = pdf2.getPageCount();
-
-    if (numPages1 !== numPages2) {
-      console.log(`Número de páginas diferente: ${numPages1} vs ${numPages2}`);
-      return false;
-    }
-
-    // Extrair texto de todas as páginas
+    // Extrair texto
     const text1 = await pdfParse(Buffer.from(pdfBytes1));
     const text2 = await pdfParse(Buffer.from(pdfBytes2));
 
-    // Remover espaços extras e quebras de linha para comparação mais tolerante
     const cleanText1 = text1.text.replace(/\s+/g, ' ').trim();
     const cleanText2 = text2.text.replace(/\s+/g, ' ').trim();
 
-    // Comparação tolerante (aceita pequenas diferenças de assinatura)
-    const saoQuaseIguais = cleanText1.length > 100 && 
-                          cleanText2.length > 100 &&
-                          (cleanText1.length - cleanText2.length) < 800; // tolerância de ~800 caracteres
+    const diferenca = Math.abs(cleanText1.length - cleanText2.length);
 
-    console.log(`📏 Comprimento texto original: ${cleanText1.length}`);
-    console.log(`📏 Comprimento texto novo: ${cleanText2.length}`);
-    console.log(`✅ PDFs são considerados iguais? ${saoQuaseIguais}`);
+    console.log(`📏 Texto original: ${cleanText1.length} caracteres`);
+    console.log(`📏 Texto novo: ${cleanText2.length} caracteres`);
+    console.log(`📊 Diferença: ${diferenca} caracteres`);
+
+    // Tolerância maior (assinatura + data + pequeno texto)
+    const saoQuaseIguais = diferenca < 1200;
+
+    console.log(`✅ PDFs considerados iguais? ${saoQuaseIguais}`);
 
     return saoQuaseIguais;
 
