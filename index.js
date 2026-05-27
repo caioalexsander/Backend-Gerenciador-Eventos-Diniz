@@ -23,6 +23,7 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
     console.log('📄 Assinatura manual - ID:', id);
     console.log('📄 Novo URL:', pdf_url);
 
+    // Buscar contrato atual
     const { data: contrato, error: fetchError } = await supabase
       .from('contratos')
       .select('pdf_url')
@@ -33,11 +34,13 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
       return res.status(404).json({ error: "Contrato não encontrado" });
     }
 
-    const original_pdf_url = contrato.pdf_url;
-    let conteudoIgual = true;
+    const oldPdfUrl = contrato.pdf_url;
+    const newPdfUrl = pdf_url;
 
-    if (original_pdf_url) {
-      conteudoIgual = await compararPDFsComAssinatura(original_pdf_url, pdf_url);
+    // Comparação
+    let conteudoIgual = true;
+    if (oldPdfUrl) {
+      conteudoIgual = await compararPDFsComAssinatura(oldPdfUrl, newPdfUrl);
     }
 
     if (!conteudoIgual) {
@@ -47,23 +50,58 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
       });
     }
 
+    // Atualizar no banco
     const { error: updateError } = await supabase
       .from('contratos')
       .update({
-        pdf_url: pdf_url,
+        pdf_url: newPdfUrl,
         status_assinatura: "assinado"
       })
       .eq('id', id);
 
     if (updateError) throw updateError;
 
-    res.json({ success: true, message: "Contrato assinado manualmente com sucesso!" });
+    // === DELETAR PDF ANTIGO ===
+    if (oldPdfUrl && oldPdfUrl !== newPdfUrl) {
+      console.log('🗑️ Deletando PDF antigo:', oldPdfUrl);
+      await deletarPdfAntigo(oldPdfUrl);
+    }
+
+    res.json({ 
+      success: true, 
+      message: "Contrato assinado manualmente com sucesso!" 
+    });
 
   } catch (error) {
     console.error("Erro na assinatura manual:", error);
     res.status(500).json({ error: error.message });
   }
 });
+
+// Função auxiliar para deletar PDF antigo
+async function deletarPdfAntigo(pdfUrl) {
+  try {
+    if (!pdfUrl) return;
+
+    // Extrair o nome do arquivo da URL
+    const urlParts = pdfUrl.split('/storage/v1/object/public/contratos/');
+    if (urlParts.length < 2) return;
+
+    let fileName = urlParts[1].split('?')[0];
+
+    const { error } = await supabase.storage
+      .from('contratos')
+      .remove([fileName]);
+
+    if (error) {
+      console.error('Erro ao deletar PDF antigo:', error);
+    } else {
+      console.log('✅ PDF antigo deletado com sucesso:', fileName);
+    }
+  } catch (e) {
+    console.error('Falha ao deletar PDF antigo:', e);
+  }
+}
 
 // ✅ VERSÃO SIMPLIFICADA E ESTÁVEL
 async function compararPDFsComAssinatura(urlOriginal, urlNovo) {
