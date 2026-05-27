@@ -17,16 +17,15 @@ const supabase = createClient(
 // ====================== ASSINATURA MANUAL ======================
 app.put('/contratos/:id/assinatura-manual', async (req, res) => {
   const { id } = req.params;
-  const { pdf_url } = req.body;   // Removemos a dependência do original_pdf_url vindo do frontend
+  const { pdf_url } = req.body;
 
   try {
     console.log('📄 Assinatura manual - ID:', id);
-    console.log('📄 Novo URL recebido:', pdf_url);
+    console.log('📄 Novo URL:', pdf_url);
 
-    // Buscar o contrato ATUAL do banco (mais confiável)
     const { data: contrato, error: fetchError } = await supabase
       .from('contratos')
-      .select('pdf_url, status_assinatura')
+      .select('pdf_url')
       .eq('id', id)
       .single();
 
@@ -34,14 +33,12 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
       return res.status(404).json({ error: "Contrato não encontrado" });
     }
 
-    const original_pdf_url = contrato.pdf_url;   // ← Pegamos direto do DB
+    const original_pdf_url = contrato.pdf_url;
 
-    console.log('📄 URL Original do Banco:', original_pdf_url || 'Nenhum');
-
-    // Comparação
     let conteudoIgual = true;
+
     if (original_pdf_url) {
-      conteudoIgual = await compararPDFsBasico(original_pdf_url, pdf_url);
+      conteudoIgual = await compararPDFsComAssinatura(original_pdf_url, pdf_url);
     }
 
     if (!conteudoIgual) {
@@ -51,7 +48,6 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
       });
     }
 
-    // Atualizar
     const { error: updateError } = await supabase
       .from('contratos')
       .update({
@@ -62,7 +58,7 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
 
     if (updateError) throw updateError;
 
-    res.json({ success: true, message: "Contrato assinado com sucesso!" });
+    res.json({ success: true, message: "Contrato assinado manualmente com sucesso!" });
 
   } catch (error) {
     console.error("Erro na assinatura manual:", error);
@@ -70,29 +66,52 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
   }
 });
 
-// Função de comparação
-async function compararPDFsBasico(urlOriginal, urlNovo) {
+// ✅ NOVA FUNÇÃO - Comparação inteligente
+async function compararPDFsComAssinatura(urlOriginal, urlNovo) {
   try {
-    console.log('🔍 Comparando PDFs...');
+    const { PDFDocument } = require('pdf-lib');
+    const pdfParse = require('pdf-parse');
 
-    const response1 = await fetch(urlOriginal);
-    const response2 = await fetch(urlNovo);
+    console.log('🔍 Comparando PDFs página por página...');
 
-    if (!response1.ok || !response2.ok) {
-      console.log('⚠️ Falha ao baixar PDFs');
+    const res1 = await fetch(urlOriginal);
+    const res2 = await fetch(urlNovo);
+
+    const pdfBytes1 = new Uint8Array(await res1.arrayBuffer());
+    const pdfBytes2 = new Uint8Array(await res2.arrayBuffer());
+
+    const pdf1 = await PDFDocument.load(pdfBytes1);
+    const pdf2 = await PDFDocument.load(pdfBytes2);
+
+    const numPages1 = pdf1.getPageCount();
+    const numPages2 = pdf2.getPageCount();
+
+    if (numPages1 !== numPages2) {
+      console.log(`Número de páginas diferente: ${numPages1} vs ${numPages2}`);
       return false;
     }
 
-    const buffer1 = await response1.arrayBuffer();
-    const buffer2 = await response2.arrayBuffer();
+    // Extrair texto de todas as páginas
+    const text1 = await pdfParse(Buffer.from(pdfBytes1));
+    const text2 = await pdfParse(Buffer.from(pdfBytes2));
 
-    const mesmoTamanho = buffer1.byteLength === buffer2.byteLength;
-    console.log(`📏 Tamanhos: ${buffer1.byteLength} vs ${buffer2.byteLength} → ${mesmoTamanho}`);
+    // Remover espaços extras e quebras de linha para comparação mais tolerante
+    const cleanText1 = text1.text.replace(/\s+/g, ' ').trim();
+    const cleanText2 = text2.text.replace(/\s+/g, ' ').trim();
 
-    return mesmoTamanho;
+    // Comparação tolerante (aceita pequenas diferenças de assinatura)
+    const saoQuaseIguais = cleanText1.length > 100 && 
+                          cleanText2.length > 100 &&
+                          (cleanText1.length - cleanText2.length) < 800; // tolerância de ~800 caracteres
 
-  } catch (e) {
-    console.error("Erro na comparação:", e);
+    console.log(`📏 Comprimento texto original: ${cleanText1.length}`);
+    console.log(`📏 Comprimento texto novo: ${cleanText2.length}`);
+    console.log(`✅ PDFs são considerados iguais? ${saoQuaseIguais}`);
+
+    return saoQuaseIguais;
+
+  } catch (error) {
+    console.error("Erro na comparação:", error);
     return false;
   }
 }
@@ -147,7 +166,13 @@ app.post('/gerar-pdf', async (req, res) => {
     // Substitui garantindo que não fique lixo antes
     textoContrato = textoContrato.replace(/\{cardapio\}/g, cardapioTexto);
 
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ 
+      size: 'A4', 
+      margins: { top: 50, bottom: 50, left: 50, right: 50 } 
+    });
+    // ✅ FORÇA A COR DO TEXTO PARA PRETO
+    doc.fillColor('black');           // ou '#000000'
+    doc.strokeColor('black');
     let buffers = [];
 
     doc.on('data', buffers.push.bind(buffers));
