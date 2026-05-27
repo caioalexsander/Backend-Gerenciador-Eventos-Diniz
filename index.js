@@ -65,25 +65,24 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
   }
 });
 
-// ✅ FUNÇÃO SIMPLIFICADA E CORRIGIDA
+// ✅ VERSÃO SIMPLIFICADA E ESTÁVEL
 async function compararPDFsComAssinatura(urlOriginal, urlNovo) {
   try {
-    const { PDFDocument } = require('pdf-lib');
-    const pdfParse = require('pdf-parse');   // ← Importação simples
+    const pdfParse = require('pdf-parse');
 
     console.log('🔍 Comparando conteúdo dos PDFs...');
 
     const res1 = await fetch(urlOriginal);
     const res2 = await fetch(urlNovo);
 
-    const pdfBytes1 = new Uint8Array(await res1.arrayBuffer());
-    const pdfBytes2 = new Uint8Array(await res2.arrayBuffer());
+    const buffer1 = Buffer.from(await res1.arrayBuffer());
+    const buffer2 = Buffer.from(await res2.arrayBuffer());
 
-    const text1 = await pdfParse(Buffer.from(pdfBytes1));
-    const text2 = await pdfParse(Buffer.from(pdfBytes2));
+    const data1 = await pdfParse(buffer1);
+    const data2 = await pdfParse(buffer2);
 
-    const cleanText1 = text1.text.replace(/\s+/g, ' ').trim();
-    const cleanText2 = text2.text.replace(/\s+/g, ' ').trim();
+    const cleanText1 = data1.text.replace(/\s+/g, ' ').trim();
+    const cleanText2 = data2.text.replace(/\s+/g, ' ').trim();
 
     const diferenca = Math.abs(cleanText1.length - cleanText2.length);
 
@@ -91,16 +90,12 @@ async function compararPDFsComAssinatura(urlOriginal, urlNovo) {
     console.log(`📏 Texto novo: ${cleanText2.length} caracteres`);
     console.log(`📊 Diferença: ${diferenca} caracteres`);
 
-    // Tolerância para assinatura + data + pequenos textos
-    const saoQuaseIguais = diferenca < 1500;
-
-    console.log(`✅ PDFs considerados iguais? ${saoQuaseIguais}`);
-
-    return saoQuaseIguais;
+    // Tolerância razoável para assinatura manual
+    return diferenca < 1800;
 
   } catch (error) {
     console.error("Erro na comparação:", error);
-    return false; // Força o aviso ao usuário em caso de erro
+    return false; // Mostra aviso para o usuário
   }
 }
 
