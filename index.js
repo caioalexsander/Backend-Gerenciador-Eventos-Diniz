@@ -65,13 +65,13 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
   }
 });
 
-// ✅ FUNÇÃO CORRIGIDA
+// ✅ FUNÇÃO SIMPLIFICADA E CORRIGIDA
 async function compararPDFsComAssinatura(urlOriginal, urlNovo) {
   try {
     const { PDFDocument } = require('pdf-lib');
-    const pdfParse = require('pdf-parse/lib/pdf.js').default;   // ← Correção aqui
+    const pdfParse = require('pdf-parse');   // ← Importação simples
 
-    console.log('🔍 Comparando PDFs (texto)...');
+    console.log('🔍 Comparando conteúdo dos PDFs...');
 
     const res1 = await fetch(urlOriginal);
     const res2 = await fetch(urlNovo);
@@ -79,7 +79,6 @@ async function compararPDFsComAssinatura(urlOriginal, urlNovo) {
     const pdfBytes1 = new Uint8Array(await res1.arrayBuffer());
     const pdfBytes2 = new Uint8Array(await res2.arrayBuffer());
 
-    // Extrair texto
     const text1 = await pdfParse(Buffer.from(pdfBytes1));
     const text2 = await pdfParse(Buffer.from(pdfBytes2));
 
@@ -92,8 +91,8 @@ async function compararPDFsComAssinatura(urlOriginal, urlNovo) {
     console.log(`📏 Texto novo: ${cleanText2.length} caracteres`);
     console.log(`📊 Diferença: ${diferenca} caracteres`);
 
-    // Tolerância maior (assinatura + data + pequeno texto)
-    const saoQuaseIguais = diferenca < 1200;
+    // Tolerância para assinatura + data + pequenos textos
+    const saoQuaseIguais = diferenca < 1500;
 
     console.log(`✅ PDFs considerados iguais? ${saoQuaseIguais}`);
 
@@ -101,7 +100,7 @@ async function compararPDFsComAssinatura(urlOriginal, urlNovo) {
 
   } catch (error) {
     console.error("Erro na comparação:", error);
-    return false;
+    return false; // Força o aviso ao usuário em caso de erro
   }
 }
 
