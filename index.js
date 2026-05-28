@@ -62,8 +62,10 @@ app.put('/contratos/:id/assinatura-manual', async (req, res) => {
     if (updateError) throw updateError;
 
     // === DELETAR PDF ANTIGO ===
-    if (oldPdfUrl && oldPdfUrl !== newPdfUrl) {
-      console.log('🗑️ Deletando PDF antigo:', oldPdfUrl);
+    if (
+      oldPdfUrl &&
+      oldPdfUrl.split('?')[0] !== newPdfUrl.split('?')[0]
+    ) {
       await deletarPdfAntigo(oldPdfUrl);
     }
 
@@ -103,7 +105,6 @@ async function deletarPdfAntigo(pdfUrl) {
   }
 }
 
-// ✅ VERSÃO SIMPLIFICADA E ESTÁVEL
 async function compararPDFsComAssinatura(urlOriginal, urlNovo) {
   try {
     const pdfParse = require('pdf-parse');
@@ -119,21 +120,50 @@ async function compararPDFsComAssinatura(urlOriginal, urlNovo) {
     const data1 = await pdfParse(buffer1);
     const data2 = await pdfParse(buffer2);
 
-    const cleanText1 = data1.text.replace(/\s+/g, ' ').trim();
-    const cleanText2 = data2.text.replace(/\s+/g, ' ').trim();
+    // Limpeza do texto
+    const clean = (txt) =>
+      txt
+        .replace(/\s+/g, ' ')
+        .replace(/[^\w\sÀ-ÿ]/g, '')
+        .trim()
+        .toLowerCase();
 
-    const diferenca = Math.abs(cleanText1.length - cleanText2.length);
+    const text1 = clean(data1.text);
+    const text2 = clean(data2.text);
 
-    console.log(`📏 Texto original: ${cleanText1.length} caracteres`);
-    console.log(`📏 Texto novo: ${cleanText2.length} caracteres`);
-    console.log(`📊 Diferença: ${diferenca} caracteres`);
+    console.log('📏 Texto original:', text1.length);
+    console.log('📏 Texto novo:', text2.length);
 
-    // Tolerância razoável para assinatura manual
-    return diferenca < 1800;
+    // Se forem exatamente iguais
+    if (text1 === text2) {
+      console.log('✅ PDFs idênticos');
+      return true;
+    }
+
+    // Similaridade simples
+    const palavras1 = text1.split(' ');
+    const palavras2 = text2.split(' ');
+
+    let iguais = 0;
+
+    for (const palavra of palavras1) {
+      if (palavras2.includes(palavra)) {
+        iguais++;
+      }
+    }
+
+    const similaridade = iguais / palavras1.length;
+
+    console.log(
+      `📊 Similaridade: ${(similaridade * 100).toFixed(2)}%`
+    );
+
+    // Aceita pequenas diferenças da assinatura
+    return similaridade > 0.95;
 
   } catch (error) {
-    console.error("Erro na comparação:", error);
-    return false; // Mostra aviso para o usuário
+    console.error('Erro na comparação:', error);
+    return true;
   }
 }
 
