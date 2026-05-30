@@ -222,7 +222,7 @@ app.post('/gerar-pdf', async (req, res) => {
       margins: { top: 50, bottom: 50, left: 50, right: 50 } 
     });
     // ✅ FORÇA A COR DO TEXTO PARA PRETO
-    doc.fillColor('black');           // ou '#000000'
+    doc.fillColor('#000000');           // ou '#000000'
     doc.strokeColor('black');
     let buffers = [];
 
@@ -274,6 +274,7 @@ app.post('/gerar-pdf', async (req, res) => {
       doc.opacity(0.2);
       doc.image('logo2.png', pageWidth / 2 - 75, pageHeight / 2 - 430, { width: 150 });
       doc.image('logo3.png', pageWidth / 2 - 75, pageHeight - 120, { width: 150 });
+      doc.opacity(1);
     }
 
     adicionarMarcaDagua(doc);
@@ -284,6 +285,8 @@ app.post('/gerar-pdf', async (req, res) => {
       adicionarAssinatura(doc); // assinatura pequena nas páginas extras
     });
 
+    doc.opacity(1);
+    
     // Gerar o PDF com o texto do Supabase
     doc.fontSize(16).text('CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE BUFFET', { align: 'center' });
     doc.moveDown(2);
@@ -313,6 +316,244 @@ app.post('/gerar-pdf', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro interno ao gerar PDF' });
+  }
+});
+
+// ====================== ASSINATURA DIGITAL ======================
+
+// 1. Gerar link de assinatura digital
+app.post('/contratos/:id/gerar-link-assinatura', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { data: contrato, error } = await supabase
+      .from('contratos')
+      .select('pdf_url, titulo, cliente_nome')
+      .eq('id', id)
+      .single();
+
+    if (error || !contrato?.pdf_url) {
+      return res.status(404).json({ error: "Contrato ou PDF não encontrado" });
+    }
+
+    // Gerar token seguro
+    const token = require('crypto').randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+
+    // Salvar token
+    await supabase.from('assinatura_tokens').upsert({
+      contrato_id: id,
+      token,
+      expires_at: expiresAt.toISOString()
+    });
+
+    const baseUrl = process.env.FRONTEND_URL || 'https://seu-dominio.com';
+    const signingUrl = `${baseUrl}/assinar/${token}`;
+
+    res.json({
+      success: true,
+      signingUrl,
+      message: "Link de assinatura digital gerado com sucesso"
+    });
+
+  } catch (error) {
+    console.error("Erro ao gerar link de assinatura:", error);
+    res.status(500).json({ error: "Erro interno ao gerar link" });
+  }
+});
+
+// 2. Servir página web de assinatura (GET)
+app.get('/assinar/:token', async (req, res) => {
+  const { token } = req.params;
+
+  // Validação simples do token (melhorar depois com middleware)
+  const { data: tokenData } = await supabase
+    .from('assinatura_tokens')
+    .select('contrato_id, expires_at')
+    .eq('token', token)
+    .single();
+
+  if (!tokenData || new Date(tokenData.expires_at) < new Date()) {
+    return res.send('<h2>Link expirado ou inválido.</h2>');
+  }
+
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Assinar Contrato - Diniz Eventos</title>
+      <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f8f9fa; }
+        canvas { border: 2px solid #333; border-radius: 8px; touch-action: none; background: white; }
+        button { padding: 12px 24px; margin: 10px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; }
+        .btn-assinar { background: #28a745; color: white; }
+        .btn-limpar { background: #dc3545; color: white; }
+      </style>
+    </head>
+    <body>
+      <h2>Assinatura Digital do Contrato</h2>
+      <p>Use o dedo ou mouse para assinar abaixo:</p>
+      <canvas id="canvas" width="600" height="300"></canvas><br><br>
+      <button class="btn-limpar" onclick="limpar()">Limpar Assinatura</button>
+      <button class="btn-assinar" onclick="concluirAssinatura()">Concluir e Assinar</button>
+
+      <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let desenhando = false;
+
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#000';
+
+        // Suporte a mouse e touch
+        canvas.addEventListener('mousedown', start);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stop);
+        canvas.addEventListener('touchstart', start);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stop);
+
+        function start(e) {
+          desenhando = true;
+          draw(e);
+        }
+
+        function stop() { desenhando = false; ctx.beginPath(); }
+
+        function draw(e) {
+          if (!desenhando) return;
+          const rect = canvas.getBoundingClientRect();
+          const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+          const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+          ctx.lineTo(x, y);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+        }
+
+        function limpar() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        async function concluirAssinatura() {
+          const signatureData = canvas.toDataURL('image/png');
+          const response = await fetch('/contratos/assinar/${token}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ signature: signatureData })
+          });
+
+          if (response.ok) {
+            alert('✅ Assinatura realizada com sucesso!');
+            window.location.href = '/assinar-sucesso.html'; // ou página simples
+          } else {
+            alert('Erro ao salvar assinatura');
+          }
+        }
+      </script>
+    </body>
+    </html>
+  `);
+});
+
+// 3. Receber assinatura e processar PDF
+app.post('/contratos/assinar/:token', async (req, res) => {
+  const { token } = req.params;
+  const { signature } = req.body;
+
+  try {
+    // Validar token
+    const { data: tokenData, error: tokenError } = await supabase
+      .from('assinatura_tokens')
+      .select('contrato_id')
+      .eq('token', token)
+      .single();
+
+    if (tokenError || !tokenData) {
+      return res.status(400).json({ error: "Token inválido ou expirado" });
+    }
+
+    const contratoId = tokenData.contrato_id;
+
+    // Buscar contrato
+    const { data: contrato } = await supabase
+      .from('contratos')
+      .select('pdf_url')
+      .eq('id', contratoId)
+      .single();
+
+    if (!contrato?.pdf_url) {
+      return res.status(404).json({ error: "PDF não encontrado" });
+    }
+
+    // Baixar PDF original
+    const pdfResponse = await fetch(contrato.pdf_url);
+    const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
+
+    // Adicionar assinatura com pdf-lib
+    const { PDFDocument, StandardFonts } = require('pdf-lib');
+    const pdfDoc = await PDFDocument.load(pdfBuffer);
+
+    const pages = pdfDoc.getPages();
+    const lastPage = pages[pages.length - 1];
+
+    // Converter assinatura base64 para bytes
+    const signatureBytes = Buffer.from(signature.split(',')[1], 'base64');
+    const signatureImage = await pdfDoc.embedPng(signatureBytes);
+
+    // Posicionar assinatura no final da última página
+    lastPage.drawImage(signatureImage, {
+      x: 50,
+      y: 80,
+      width: 250,
+      height: 100,
+    });
+
+    lastPage.drawText(`Assinado em ${new Date().toLocaleDateString('pt-BR')}`, {
+      x: 50,
+      y: 50,
+      size: 12,
+      font: await pdfDoc.embedFont(StandardFonts.Helvetica),
+    });
+
+    const updatedPdfBytes = await pdfDoc.save();
+
+    // Upload novo PDF
+    const fileName = `contrato_${contratoId}_assinado_${Date.now()}.pdf`;
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('contratos')
+      .upload(fileName, updatedPdfBytes, {
+        contentType: 'application/pdf',
+        upsert: true
+      });
+
+    if (uploadError) throw uploadError;
+
+    const newPdfUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/contratos/${fileName}`;
+
+    // Atualizar banco
+    await supabase
+      .from('contratos')
+      .update({
+        pdf_url: newPdfUrl,
+        status_assinatura: "assinado"
+      })
+      .eq('id', contratoId);
+
+    // Deletar PDF antigo
+    await deletarPdfAntigo(contrato.pdf_url);
+
+    // Invalidar token
+    await supabase.from('assinatura_tokens').delete().eq('token', token);
+
+    res.json({ success: true, newPdfUrl });
+
+  } catch (error) {
+    console.error("Erro na assinatura digital:", error);
+    res.status(500).json({ error: "Erro ao processar assinatura" });
   }
 });
 
