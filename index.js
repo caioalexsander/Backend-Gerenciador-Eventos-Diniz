@@ -11,7 +11,8 @@ require('dotenv').config();
 // ====================== SUPABASE ======================
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
+  process.env.SUPABASE_SERVICE_KEY,
+  process.env.FRONTEND_URL
 );
 
 // ====================== ASSINATURA MANUAL ======================
@@ -286,7 +287,7 @@ app.post('/gerar-pdf', async (req, res) => {
     });
 
     doc.opacity(1);
-    
+
     // Gerar o PDF com o texto do Supabase
     doc.fontSize(16).text('CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE BUFFET', { align: 'center' });
     doc.moveDown(2);
