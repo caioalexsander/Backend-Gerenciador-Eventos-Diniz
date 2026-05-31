@@ -11,8 +11,7 @@ require('dotenv').config();
 // ====================== SUPABASE ======================
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY,
-  process.env.FRONTEND_URL
+  process.env.SUPABASE_SERVICE_KEY
 );
 
 // ====================== ASSINATURA MANUAL ======================
@@ -332,7 +331,7 @@ app.post('/contratos/:id/gerar-link-assinatura', async (req, res) => {
   try {
     const { data: contrato, error } = await supabase
       .from('contratos')
-      .select('pdf_url, titulo')
+      .select('pdf_url')
       .eq('id', id)
       .single();
 
