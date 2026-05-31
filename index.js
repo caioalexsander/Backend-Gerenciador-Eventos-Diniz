@@ -326,6 +326,9 @@ app.post('/gerar-pdf', async (req, res) => {
 app.post('/contratos/:id/gerar-link-assinatura', async (req, res) => {
   const { id } = req.params;
 
+  console.log('🔥 Gerando assinatura');
+  console.log('ID recebido:', id);
+
   try {
     const { data: contrato, error } = await supabase
       .from('contratos')
@@ -333,11 +336,19 @@ app.post('/contratos/:id/gerar-link-assinatura', async (req, res) => {
       .eq('id', id)
       .single();
 
+    console.log('📄 Contrato encontrado:', contrato);
+    console.log('❌ Erro Supabase:', error);
+
     if (error || !contrato?.pdf_url) {
-      return res.status(404).json({ error: "Contrato ou PDF não encontrado" });
+      return res.status(404).json({
+        error: "Contrato ou PDF não encontrado",
+        detalhes: error,
+        contrato
+      });
     }
 
     const token = require('crypto').randomBytes(32).toString('hex');
+
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     await supabase.from('assinatura_tokens').upsert({
@@ -346,7 +357,8 @@ app.post('/contratos/:id/gerar-link-assinatura', async (req, res) => {
       expires_at: expiresAt.toISOString()
     });
 
-    const signingUrl = `${process.env.FRONTEND_URL}/assinar/${token}`;
+    const signingUrl =
+      `${process.env.FRONTEND_URL}/assinar/${token}`;
 
     res.json({
       success: true,
@@ -355,8 +367,12 @@ app.post('/contratos/:id/gerar-link-assinatura', async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Erro ao gerar link" });
+    console.error('🔥 ERRO COMPLETO:', error);
+
+    res.status(500).json({
+      error: "Erro ao gerar link",
+      detalhes: error.message
+    });
   }
 });
 
