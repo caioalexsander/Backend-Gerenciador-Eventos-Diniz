@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json());
 
 // ====================== IMPORTS ======================
-const contratosRoutes = require('./routes/contratos.routes');
+const contratosRoutes = require('./src/routes/contratos.routes');
 
 // ====================== MIDDLEWARES E ROTAS ======================
 app.use('/', contratosRoutes);
@@ -22,4 +22,4 @@ app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
 
-module.exports = app; // útil para testes
+module.exports = app;
