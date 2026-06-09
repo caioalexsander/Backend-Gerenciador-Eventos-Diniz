@@ -23,7 +23,7 @@ async function deletarPdfAntigo(supabase, pdfUrl) {
   }
 }
 
-function adicionarTextoComNegrito(doc, texto, options = {}) {
+async function adicionarTextoComNegrito(doc, texto, options = {}) {
   if (!texto) return;
 
   // Divide o texto mantendo os **...**

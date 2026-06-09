@@ -2,29 +2,6 @@ const supabase = require('../config/supabase');
 const PDFDocument = require('pdfkit');
 const { deletarPdfAntigo, adicionarTextoComNegrito } = require('../utils/pdfUtils');
 
-function adicionarTextoComNegrito(doc, texto, options = {}) {
-  const partes = texto.split(/(\*\*.*?\*\*)/g); // divide pelo **texto**
-  
-  partes.forEach(parte => {
-    if (parte.startsWith('**') && parte.endsWith('**')) {
-      // Texto em negrito
-      const conteudo = parte.slice(2, -2);
-      doc.font('Helvetica-Bold').text(conteudo, { 
-        continued: true, 
-        align: options.align || 'justify' 
-      });
-    } else {
-      // Texto normal
-      doc.font('Helvetica').text(parte, { 
-        continued: true, 
-        align: options.align || 'justify' 
-      });
-    }
-  });
-  
-  doc.font('Helvetica'); // volta para normal
-}
-
 async function gerarPdf(dados) {
   console.log('✅ REQUISIÇÃO DE GERAÇÃO DE PDF RECEBIDA');
 
