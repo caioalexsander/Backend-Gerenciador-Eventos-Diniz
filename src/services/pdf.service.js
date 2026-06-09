@@ -2,6 +2,29 @@ const supabase = require('../config/supabase');
 const PDFDocument = require('pdfkit');
 const { deletarPdfAntigo } = require('../utils/pdfUtils');
 
+function adicionarTextoComNegrito(doc, texto, options = {}) {
+  const partes = texto.split(/(\*\*.*?\*\*)/g); // divide pelo **texto**
+  
+  partes.forEach(parte => {
+    if (parte.startsWith('**') && parte.endsWith('**')) {
+      // Texto em negrito
+      const conteudo = parte.slice(2, -2);
+      doc.font('Helvetica-Bold').text(conteudo, { 
+        continued: true, 
+        align: options.align || 'justify' 
+      });
+    } else {
+      // Texto normal
+      doc.font('Helvetica').text(parte, { 
+        continued: true, 
+        align: options.align || 'justify' 
+      });
+    }
+  });
+  
+  doc.font('Helvetica'); // volta para normal
+}
+
 async function gerarPdf(dados) {
   console.log('✅ REQUISIÇÃO DE GERAÇÃO DE PDF RECEBIDA');
 
@@ -89,7 +112,9 @@ async function gerarPdf(dados) {
 
     doc.fontSize(16).text('CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE BUFFET', { align: 'center' });
     doc.moveDown(2);
-    doc.fontSize(12).text(textoContrato, { align: 'justify' });
+    //doc.fontSize(12).text(textoContrato, { align: 'justify' });
+    doc.fontSize(12);
+    adicionarTextoComNegrito(doc, textoContrato, { align: 'justify' });
 
     // Assinatura final
     doc.moveDown(7);
