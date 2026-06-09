@@ -46,7 +46,7 @@ async function gerarPdf(dados) {
     // Tratamento do cardápio
     let cardapioTexto = 'Nenhum item selecionado.';
     if (dados.cardapio_selecionado && Array.isArray(dados.cardapio_selecionado) && dados.cardapio_selecionado.length > 0) {
-      cardapioTexto = dados.cardapio_selecionado.map(item => `• ${item}`).join('\n');
+      cardapioTexto = dados.cardapio_selecionado.map(item => `**• ${item}**`).join('\n');
     }
     textoContrato = textoContrato.replace(/\{cardapio\}/g, cardapioTexto);
 
