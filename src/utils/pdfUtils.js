@@ -26,26 +26,37 @@ async function deletarPdfAntigo(supabase, pdfUrl) {
 async function adicionarTextoComNegrito(doc, texto, options = {}) {
   if (!texto) return;
 
-  // Divide texto entre normal e **negrito**
-  const partes = texto.split(/(\*\*.*?\*\*)/g);
+  // quebra em linhas
+  const linhas = texto.split('\n');
 
-  partes.forEach((parte, index) => {
-    const isBold =
-      parte.startsWith('**') && parte.endsWith('**');
+  linhas.forEach((linha) => {
 
-    const conteudo = isBold
-      ? parte.slice(2, -2)
-      : parte;
+    // quebra partes bold
+    const partes = linha.split(/(\*\*.*?\*\*)/g);
 
-    doc
-      .font(isBold ? 'Helvetica-Bold' : 'Helvetica')
-      .text(conteudo, {
+    partes.forEach((parte, index) => {
+
+      const isBold =
+        parte.startsWith('**') &&
+        parte.endsWith('**');
+
+      const conteudo = isBold
+        ? parte.slice(2, -2)
+        : parte;
+
+      doc.font(isBold ? 'Helvetica-Bold' : 'Helvetica');
+
+      doc.text(conteudo, {
         ...options,
         continued: index !== partes.length - 1
       });
+    });
+
+    // FINALIZA LINHA
+    doc.text(' ');
   });
 
-  doc.text('', { continued: false });
+  doc.font('Helvetica');
 }
 
 async function compararPDFsComAssinatura(urlOriginal, urlNovo) {

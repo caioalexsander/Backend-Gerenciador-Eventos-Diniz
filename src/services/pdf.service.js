@@ -50,6 +50,11 @@ async function gerarPdf(dados) {
     }
     textoContrato = textoContrato.replace(/\{cardapio\}/g, cardapioTexto);
 
+    textoContrato = textoContrato
+    .replace(/\r/g, '')
+    .replace(/\t/g, ' ')
+    .replace(/[^\x20-\x7EÀ-ÿ•\n]/g, '');
+
     const doc = new PDFDocument({ 
       size: 'A4', 
       margins: { top: 50, bottom: 50, left: 50, right: 50 } 
@@ -90,9 +95,17 @@ async function gerarPdf(dados) {
     doc.fontSize(16).text('CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE BUFFET', { align: 'center' });
     doc.moveDown(2);
     //doc.fontSize(12).text(textoContrato, { align: 'justify' });
+
     doc.fontSize(12);
-    adicionarTextoComNegrito(doc, textoContrato, { align: 'justify' });
-    doc.moveDown(0.5);
+
+    await adicionarTextoComNegrito(
+      doc,
+      textoContrato,
+      {
+        width: 500,
+        align: 'justify'
+      }
+    );
 
     // Assinatura final
     doc.moveDown(7);
