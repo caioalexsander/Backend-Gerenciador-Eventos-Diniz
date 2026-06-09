@@ -108,15 +108,44 @@ async function gerarPdf(dados) {
     );
 
     // Assinatura final
-    doc.moveDown(7);
-    const yAssinatura = doc.y;
+    const alturaNecessaria = 140;
 
-    if (dados.assinatura === 'Digital') {
-      doc.image('assinatura.png', 80, yAssinatura - 60, { width: 120 });
+    // Se estiver perto do final da página, cria nova página
+    if (doc.y + alturaNecessaria > doc.page.height - 50) {
+      doc.addPage();
     }
 
-    doc.text('_______________________                             _____________________', { align: 'justify' });
-    doc.text('       CONTRATADA                                                   CONTRATANTE      ', { align: 'justify' });
+    doc.moveDown(4);
+
+    const yAssinatura = doc.y;
+
+    // assinatura digital
+    if (dados.assinatura === 'Digital') {
+      doc.image(
+        'assinatura.png',
+        80,
+        yAssinatura - 40,
+        { width: 120 }
+      );
+    }
+
+    // linhas assinatura
+    doc.text(
+      '_______________________                             _____________________',
+      {
+        align: 'center'
+      }
+    );
+
+    doc.moveDown(0.5);
+
+    // nomes assinatura
+    doc.text(
+      'CONTRATADA                                      CONTRATANTE',
+      {
+        align: 'center'
+      }
+    );
 
     doc.end();
 
