@@ -23,6 +23,28 @@ async function deletarPdfAntigo(supabase, pdfUrl) {
   }
 }
 
+function adicionarTextoComNegrito(doc, texto, options = {}) {
+  if (!texto) return;
+
+  // Divide o texto mantendo os **...**
+  const partes = texto.split(/(\*\*.*?\*\*)/gs);
+
+  partes.forEach((parte) => {
+    if (parte.startsWith('**') && parte.endsWith('**')) {
+      const conteudo = parte.slice(2, -2).trim();
+      doc
+        .font('Helvetica-Bold')
+        .text(conteudo, { continued: true, ...options });
+    } else if (parte.trim()) {
+      doc
+        .font('Helvetica')
+        .text(parte, { continued: true, ...options });
+    }
+  });
+
+  doc.font('Helvetica'); // volta ao normal
+}
+
 async function compararPDFsComAssinatura(urlOriginal, urlNovo) {
   try {
     console.log('🔍 Comparando conteúdo dos PDFs...');
@@ -69,4 +91,4 @@ async function compararPDFsComAssinatura(urlOriginal, urlNovo) {
   }
 }
 
-module.exports = { deletarPdfAntigo, compararPDFsComAssinatura };
+module.exports = { deletarPdfAntigo, compararPDFsComAssinatura, adicionarTextoComNegrito };

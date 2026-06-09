@@ -1,6 +1,6 @@
 const supabase = require('../config/supabase');
 const PDFDocument = require('pdfkit');
-const { deletarPdfAntigo } = require('../utils/pdfUtils');
+const { deletarPdfAntigo, adicionarTextoComNegrito } = require('../utils/pdfUtils');
 
 function adicionarTextoComNegrito(doc, texto, options = {}) {
   const partes = texto.split(/(\*\*.*?\*\*)/g); // divide pelo **texto**
@@ -115,6 +115,7 @@ async function gerarPdf(dados) {
     //doc.fontSize(12).text(textoContrato, { align: 'justify' });
     doc.fontSize(12);
     adicionarTextoComNegrito(doc, textoContrato, { align: 'justify' });
+    doc.moveDown(0.5);
 
     // Assinatura final
     doc.moveDown(7);
