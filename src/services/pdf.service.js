@@ -53,7 +53,7 @@ async function gerarPdf(dados) {
     textoContrato = textoContrato
     .replace(/\r/g, '')
     .replace(/\t/g, ' ')
-    .replace(/[^\x20-\x7EÀ-ÿ•\n]/g, '');
+    .replace(/[^\x20-\x7EÀ-ÿ•°ºª%\n]/g, '');
 
     const doc = new PDFDocument({ 
       size: 'A4', 
