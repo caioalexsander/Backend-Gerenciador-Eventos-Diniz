@@ -21,6 +21,7 @@ async function gerarPdf(dados) {
     // Substituições principais
     const substituições = {
       nome_contratante: dados.nome_contratante || '',
+      tipo_documento_contratante: dados.tipo_documento_contratante || '',
       cpf_contratante: dados.cpf_contratante || '',
       residencia_contratante: dados.residencia_contratante || '',
       data_evento: dados.data_evento || '',
@@ -44,10 +45,34 @@ async function gerarPdf(dados) {
     });
 
     // Tratamento do cardápio
+    // Tratamento do cardápio - AGRUPADO POR CATEGORIA
     let cardapioTexto = 'Nenhum item selecionado.';
+
     if (dados.cardapio_selecionado && Array.isArray(dados.cardapio_selecionado) && dados.cardapio_selecionado.length > 0) {
-      cardapioTexto = dados.cardapio_selecionado.map(item => `**• ${item}**`).join('\n');
+      
+      // Se vierem objetos completos (recomendado - com categoria)
+      if (dados.cardapio_selecionado[0] && typeof dados.cardapio_selecionado[0] === 'object') {
+        const grouped = {};
+
+        dados.cardapio_selecionado.forEach(item => {
+          const cat = item.categoria || 'Sem categoria';
+          if (!grouped[cat]) grouped[cat] = [];
+          grouped[cat].push(item.nome || item); // suporta nome ou string
+        });
+
+        cardapioTexto = Object.entries(grouped)
+          .map(([categoria, itens]) => {
+            return `**${categoria}**\n` +
+                  itens.map(i => `   • ${typeof i === 'string' ? i : i.nome || i}`).join('\n');
+          })
+          .join('\n\n');
+      } 
+      // Compatibilidade com formato antigo (array de strings)
+      else {
+        cardapioTexto = dados.cardapio_selecionado.map(item => `**• ${item}**`).join('\n');
+      }
     }
+
     textoContrato = textoContrato.replace(/\{cardapio\}/g, cardapioTexto);
 
     textoContrato = textoContrato
