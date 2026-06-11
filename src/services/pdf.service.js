@@ -63,7 +63,7 @@ async function gerarPdf(dados) {
         cardapioTexto = Object.entries(grouped)
           .map(([categoria, itens]) => {
             return `**${categoria}**\n` +
-                  itens.map(i => `   • ${typeof i === 'string' ? i : i.nome || i}`).join('\n');
+                  itens.map(i => `   **• ${typeof i === 'string' ? i : i.nome || i}**`).join('\n');
           })
           .join('\n\n');
       } 
