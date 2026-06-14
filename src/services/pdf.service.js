@@ -59,21 +59,27 @@ async function gerarPdf(dados) {
           grouped[cat].push(item.nome || item); // suporta nome ou string
         });
 
-        const { data: categoriasComPrioridade } = await supabase
-        .from('modelo_contrato')
-        .select('titulo, prioridade')  // ajuste 'titulo' se o campo que identifica a categoria for diferente
-        .not('prioridade', 'is', null);
+        const { data: categoriasComPrioridade, error: priError } = await supabase
+          .from('modelo_contrato')
+          .select('titulo, prioridade')
+          .not('prioridade', 'is', null);
+
+        if (priError) {
+          console.warn('⚠️ Erro ao buscar prioridades:', priError.message);
+        }
 
         const prioridadeMap = {};
-          (categoriasComPrioridade || []).forEach(cat => {
-            prioridadeMap[cat.titulo] = cat.prioridade; // mapeia nome da categoria -> prioridade
-          });
+        (categoriasComPrioridade || []).forEach(cat => {
+          if (cat.titulo) prioridadeMap[cat.titulo.trim()] = parseInt(cat.prioridade);
+        });
 
+        // Ordena as categorias por prioridade (menor número primeiro)
         const sortedCategories = Object.entries(grouped).sort((a, b) => {
-        const priA = prioridadeMap[a[0]] ?? 9999;
-        const priB = prioridadeMap[b[0]] ?? 9999;
+          const priA = prioridadeMap[a[0]] ?? 9999;
+          const priB = prioridadeMap[b[0]] ?? 9999;
           return priA - priB;
         });
+        
         cardapioTexto = Object.entries(grouped)
           .map(([categoria, itens]) => {
             return `**${categoria}**\n` +
