@@ -79,8 +79,8 @@ async function gerarPdf(dados) {
           const priB = prioridadeMap[b[0]] ?? 9999;
           return priA - priB;
         });
-        
-        cardapioTexto = Object.entries(grouped)
+
+        cardapioTexto = sortedCategories
           .map(([categoria, itens]) => {
             return `**${categoria}**\n` +
                   itens.map(i => `   **• ${typeof i === 'string' ? i : i.nome || i}**`).join('\n');
