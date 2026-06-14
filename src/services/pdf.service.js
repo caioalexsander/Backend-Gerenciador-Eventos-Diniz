@@ -44,7 +44,6 @@ async function gerarPdf(dados) {
       );
     });
 
-    // Tratamento do cardápio
     // Tratamento do cardápio - AGRUPADO POR CATEGORIA
     let cardapioTexto = 'Nenhum item selecionado.';
 
@@ -55,7 +54,7 @@ async function gerarPdf(dados) {
         const grouped = {};
 
         dados.cardapio_selecionado.forEach(item => {
-          const cat = item.categoria || 'Sem categoria';
+          const cat = item.categoria || '';
           if (!grouped[cat]) grouped[cat] = [];
           grouped[cat].push(item.nome || item); // suporta nome ou string
         });
