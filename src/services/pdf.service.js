@@ -34,6 +34,8 @@ async function gerarPdf(dados) {
       preco_por_convidado: dados.preco_por_convidado || '',
       preco_total: dados.preco_total || '',
       clausula_pagamento: dados.clausula_texto || '',
+      preco_excedente_convidado: dados.preco_excedente_convidado || '',
+      quantidade_garcom: dados.quantidade_garcom || '',
       assinatura: dados.assinatura || ''
     };
 
