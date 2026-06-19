@@ -36,6 +36,7 @@ async function gerarPdf(dados) {
       clausula_pagamento: dados.clausula_texto || '',
       preco_excedente_convidado: dados.preco_excedente_convidado || '',
       quantidade_garcom: dados.quantidade_garcom || '',
+      idade_maxima_criança: dados.idade_maxima_criança || '',
       assinatura: dados.assinatura || ''
     };
 
